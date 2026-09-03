@@ -28,6 +28,13 @@ describe('similarityFromDistance', () => {
     expect(similarityFromDistance(0.25)).toBeCloseTo(0.75);
     expect(similarityFromDistance(1)).toBe(0);
   });
+
+  it('lands exactly on a threshold the user could have typed', () => {
+    // `1 - 0.9` is 0.09999999999999998 in binary floating point, which would
+    // fail an inclusive floor of 0.1 for a hit that is exactly at it.
+    expect(similarityFromDistance(0.9)).toBe(0.1);
+    expect(passesFloor(similarityFromDistance(0.9), 0.1)).toBe(true);
+  });
 });
 
 describe('passesFloor', () => {

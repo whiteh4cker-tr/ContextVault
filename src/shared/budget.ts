@@ -19,7 +19,10 @@ export const CONTEXT_STEPS = [
  * inversion in exactly one place.
  */
 export function similarityFromDistance(distance: number): number {
-  return 1 - distance;
+  // Rounded to microunits: in binary floating point `1 - 0.9` is
+  // 0.09999999999999998, which would fail an inclusive floor of 0.1 for a hit
+  // that is exactly at it. Nobody's similarity threshold is finer than this.
+  return Math.round((1 - distance) * 1e6) / 1e6;
 }
 
 /** The floor is inclusive: a hit exactly at the threshold is a hit. */

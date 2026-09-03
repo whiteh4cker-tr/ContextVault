@@ -50,6 +50,14 @@ export interface ModelCatalogEntry {
   sizeBytes: number;
   label: string;
   recommended: boolean;
+  /** Vector width this embedder produces (embedding role only). */
+  dimensions?: number;
+  /**
+   * Context length the file declares, read from its own metadata when it is on
+   * disk and stated here otherwise. It is the ceiling a size can be judged
+   * against before the file is even downloaded.
+   */
+  trainedContext?: number;
 }
 
 /**
