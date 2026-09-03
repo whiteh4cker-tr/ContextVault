@@ -14,7 +14,9 @@ export interface PollOptions {
 }
 
 export async function pollUntil(
-  assertion: () => void | Promise<void>,
+  // Any value is fine; the signal is the throw. Queries that return an element
+  // are the common case, so the return type is deliberately not narrowed.
+  assertion: () => unknown,
   { timeoutMs = 3000, intervalMs = 3 }: PollOptions = {},
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
