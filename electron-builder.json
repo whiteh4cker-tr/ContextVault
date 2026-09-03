@@ -1,0 +1,23 @@
+{
+  "appId": "tr.alperendemir.contextvault",
+  "productName": "ContextVault",
+  "files": ["dist-electron", "dist-react"],
+  "asarUnpack": [
+    "**/node_modules/node-llama-cpp/**",
+    "**/node_modules/@node-llama-cpp/**",
+    "**/node_modules/ruvector/**",
+    "**/node_modules/@ruvector/**",
+    "**/node_modules/ruvector-core-*/**"
+  ],
+  "mac": {
+    "target": "dmg",
+    "category": "public.app-category.productivity"
+  },
+  "linux": {
+    "target": "AppImage",
+    "category": "Utility"
+  },
+  "win": {
+    "target": ["portable", "msi"]
+  }
+}

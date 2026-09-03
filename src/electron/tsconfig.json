@@ -1,0 +1,22 @@
+{
+  "compilerOptions": {
+    "tsBuildInfoFile": "../../node_modules/.tmp/tsconfig.electron.tsbuildinfo",
+    "target": "esnext",
+    "lib": ["ESNext"],
+    "types": ["node"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "skipLibCheck": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noImplicitOverride": true,
+    "outDir": "../../dist-electron",
+    "rootDir": "..",
+    "sourceMap": true
+  },
+  "include": ["."],
+  "exclude": ["**/*.test.ts"]
+}
