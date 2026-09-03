@@ -1,4 +1,4 @@
-import type { DocumentRecord, ModelStatusSnapshot } from '../../shared/types';
+import type { Citation, DocumentRecord, Message, ModelStatusSnapshot } from '../../shared/types';
 
 let counter = 0;
 
@@ -18,6 +18,38 @@ export function makeDocument(overrides: Partial<DocumentRecord> = {}): DocumentR
     embeddedWith: 'bge-m3-q8_0.gguf',
     status: { state: 'ready' },
     addedAt: 0,
+    ...overrides,
+  };
+}
+
+let messageCounter = 0;
+
+/** A passage the model claims to have read. */
+export function makeCitation(overrides: Partial<Citation> = {}): Citation {
+  return {
+    index: 1,
+    documentId: 'doc-1',
+    documentName: 'annual-report.pdf',
+    page: 7,
+    chunkIndex: 14,
+    similarity: 0.82,
+    snippet: 'Revenue rose 14% year over year, driven by the services division.',
+    ...overrides,
+  };
+}
+
+/** A transcript entry; assistant messages carry citations by default. */
+export function makeMessage(overrides: Partial<Message> = {}): Message {
+  messageCounter += 1;
+  return {
+    id: `msg-${messageCounter}`,
+    conversationId: 'conv-1',
+    role: 'assistant',
+    content: 'Revenue rose 14% [1].',
+    citations: [makeCitation()],
+    provenance: 'cited',
+    createdAt: 0,
+    done: true,
     ...overrides,
   };
 }
