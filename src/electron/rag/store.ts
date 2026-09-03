@@ -13,7 +13,14 @@ export type WorkerLauncher = (workerPath: string) => SpawnedWorker;
 
 /** Plain Node child. Used by the tests, and by any non-Electron host. */
 export const forkLauncher: WorkerLauncher = (workerPath) => {
-  const child = fork(workerPath, [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
+  // Inside Electron, `fork` starts another copy of the application — the child's
+  // executable is the same binary that is already running this code. Declaring the
+  // child as Node gives one interpreter per job: no second application bootstrap,
+  // no window, and native addons resolve against the ABI they were built for.
+  const child = fork(workerPath, [], {
+    stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' },
+  });
   return {
     post: (message) => child.send?.(message as never),
     onMessage: (cb) => child.on('message', cb),

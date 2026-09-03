@@ -84,19 +84,31 @@ export function chunkText(source: string, options: ChunkOptions): TextChunk[] {
 
   if (source.trim().length === 0) return [];
 
+  // The end that matters is the last character carrying content, not the length of
+  // the string. A document that closes with "\n\n   " would otherwise keep the
+  // window alive for those five characters: the passage emitted for each of them is
+  // one character shorter than the last, and every one of them goes into the index.
+  const contentEnd = snapTrimEnd(source, 0, source.length);
+
   const chunks: TextChunk[] = [];
   let pos = snapStart(source, 0);
 
-  while (pos < source.length) {
-    const limit = Math.min(pos + size, source.length);
-    const end = limit >= source.length ? snapEnd(source, pos, limit) : snapEnd(source, pos, limit);
+  while (pos < contentEnd) {
+    const limit = Math.min(pos + size, contentEnd);
+    // The last passage takes everything that is left, boundary or not. Snapping its
+    // end back to a sentence does two damaging things at once: the characters after
+    // that boundary appear in no passage at all — a hole in an index is invisible,
+    // since no query can reveal that a line was never embedded — and the window is
+    // never told it has finished, so it re-emits the same tail one character shorter
+    // until the offset catches up.
+    const end = limit >= contentEnd ? contentEnd : snapEnd(source, pos, limit);
     const trimmedEnd = snapTrimEnd(source, pos, end);
 
     if (trimmedEnd > pos) {
       chunks.push({ text: source.slice(pos, trimmedEnd), index: chunks.length, start: pos, end: trimmedEnd });
     }
 
-    if (end >= source.length) break;
+    if (end >= contentEnd) break;
 
     // Step back inside the passage just emitted, then forward to a word start, so
     // the overlap is whole words rather than a word sawn in half.

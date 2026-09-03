@@ -21,6 +21,23 @@ export interface Request {
 
 let db: InstanceType<typeof VectorDb> | null = null;
 
+/**
+ * Graph parameters for the index, including the declared capacity.
+ *
+ * `maxElements` is not cosmetic, and its default is a trap. When a caller omits
+ * `hnswConfig`, ruvector's JavaScript wrapper supplies `maxElements: 10_000_000`
+ * and the native side reserves against that number during construction: opening an
+ * index for a 100-chunk invoice aborted this process while asking the allocator for
+ * 3.6 GB, twice the size of the embedding model.
+ *
+ * Declaring a capacity costs nothing measurable — 100 vectors of 2560 dimensions
+ * with a capacity of 1 000 000 use 15 MB resident and a 2.6 MB file, the same as a
+ * capacity of 1 000 — and writing past the declared figure is accepted rather than
+ * refused. So it is a planning number, chosen to hold a large contract corpus
+ * without a resize, not a wall.
+ */
+const INDEX_GRAPH = { m: 32, efConstruction: 200, efSearch: 100, maxElements: 1_000_000 };
+
 function post(message: unknown): void {
   const parentPort = (process as unknown as { parentPort?: { postMessage(message: unknown): void } }).parentPort;
   if (parentPort) parentPort.postMessage(message);
@@ -54,7 +71,9 @@ export async function serve(request: Request): Promise<unknown> {
         storagePath: indexPath,
         dimensions,
         distanceMetric: metric,
-        ...(hnswConfig ? { hnswConfig } : {}),
+        // Spread rather than substituted: a caller-supplied configuration that
+        // forgets `maxElements` must not fall back into the 10 000 000 default.
+        hnswConfig: { ...INDEX_GRAPH, ...(hnswConfig ?? {}) },
       });
       return { count: await db.len() };
     }

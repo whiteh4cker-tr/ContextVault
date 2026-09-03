@@ -81,4 +81,35 @@ describe('chunkText', () => {
     expect(chunks[0]!.text.endsWith('signature page.')).toBe(true);
     expect(chunks[1]!.text.startsWith('Fees are payable')).toBe(true);
   });
+
+  it('does not cascade one-character passages at the end of a document', () => {
+    // A document whose last line is followed by whitespace reached its content end a
+    // few characters short of the offset the loop tested against, so the loop kept
+    // running: it re-emitted the tail, then the tail minus one character, and so on.
+    // A 6.7 KB input produced 135 passages of which 110 were shorter than a word —
+    // all indexed, all able to outrank a real answer, and none of them a passage.
+    const newline = String.fromCharCode(10);
+    const document = SAMPLE + newline + newline + '   ';
+    const chunkSize = 100;
+    const overlap = 20;
+    const chunks = chunkText(document, { chunkSize, chunkOverlap: overlap });
+
+    // The most passages a window of this stride can need, plus one for a ragged end.
+    const ceiling = Math.ceil(document.trimEnd().length / (chunkSize - overlap)) + 1;
+    expect(chunks.length, 'produced ' + chunks.length + ' passages, ceiling ' + ceiling).toBeLessThanOrEqual(
+      ceiling,
+    );
+
+    const fragments = chunks.slice(0, -1).filter((entry) => entry.end - entry.start < chunkSize / 4);
+    expect(fragments, 'fragment lengths: ' + fragments.map((entry) => entry.end - entry.start).join(',')).toHaveLength(
+      0,
+    );
+  });
+
+  it('stops at the last character that carries content', () => {
+    const trailing = 'First sentence here. Second sentence here.' + '   ' + String.fromCharCode(10);
+    const chunks = chunkText(trailing, { chunkSize: 40, chunkOverlap: 5 });
+    expect(chunks.at(-1)!.end).toBe('First sentence here. Second sentence here.'.length);
+    expect(chunks.some((entry) => entry.end - entry.start < 3)).toBe(false);
+  });
 });
