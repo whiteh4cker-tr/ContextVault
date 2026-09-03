@@ -64,9 +64,9 @@ describe('fakeBackend ingestion', () => {
     const seen: string[] = [];
     backend.onRagProgress((event) => seen.push(event.stage));
     await backend.addDocuments({ paths: ['C:/fake/contract.pdf'] });
-    await vi.waitFor(async () => {
-      expect((await backend.listDocuments())[0].status.state).toBe('ready');
-    });
+    // Wait on the event stream rather than on the record: the record flips to
+    // ready just before the last progress event is delivered.
+    await vi.waitFor(() => expect(seen).toContain('ready'));
     expect(stageWalk(seen)).toEqual(['hashing', 'parsing', 'chunking', 'embedding', 'indexing', 'ready']);
     const doc = (await backend.listDocuments())[0];
     expect(doc.chunkCount).toBeGreaterThan(0);

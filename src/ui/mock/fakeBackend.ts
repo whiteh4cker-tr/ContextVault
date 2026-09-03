@@ -50,8 +50,15 @@ const SNIPPETS = [
 ];
 
 export interface FakeBackendOptions {
-  /** Delay between ingestion stages, and between streamed tokens. */
+  /** Delay between ingestion stages. */
   stageDelayMs?: number;
+  /**
+   * Delay between streamed tokens. Defaults to `stageDelayMs`.
+   *
+   * Kept separate because a test that wants to observe the streaming state needs
+   * a turn long enough to look at, without waiting through a slow ingestion.
+   */
+  tokenDelayMs?: number;
   /** Start with the default models present, so `npm run dev` shows a working app. */
   modelsInstalled?: boolean;
   /** Simulated machine: 32 GB total, 22 GB free. */
@@ -106,6 +113,7 @@ const STAGE_SEQUENCE = ['hashing', 'parsing', 'chunking', 'embedding', 'indexing
  */
 export function createFakeBackend(options: FakeBackendOptions = {}): IpcApi {
   const stageDelayMs = options.stageDelayMs ?? 40;
+  const tokenDelayMs = options.tokenDelayMs ?? stageDelayMs;
   const totalBytes = options.totalBytes ?? 34_359_738_368;
   const startFree = options.freeBytes ?? 23_622_320_128;
   const installed = new Map<ModelRole, string>();
@@ -521,7 +529,7 @@ export function createFakeBackend(options: FakeBackendOptions = {}): IpcApi {
         if (cancelled.has(requestId)) break;
         assistant.content = stream.slice(0, taken + 14);
         chatEvents.emit({ requestId, conversationId, messageId, text: stream.slice(taken, taken + 14), done: false });
-        await wait(stageDelayMs / 14);
+        await wait(tokenDelayMs);
       }
 
       const elapsedSeconds = Math.max(0.001, (Date.now() - startedAt) / 1000);
