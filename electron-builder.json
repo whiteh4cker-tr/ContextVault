@@ -1,7 +1,11 @@
 {
   "appId": "tr.alperendemir.contextvault",
   "productName": "ContextVault",
-  "files": ["dist-electron", "dist-react"],
+  "files": [
+    "dist-electron",
+    "dist-react",
+    "build/icon.png"
+  ],
   "asarUnpack": [
     "**/node_modules/node-llama-cpp/**",
     "**/node_modules/@node-llama-cpp/**",
@@ -18,6 +22,19 @@
     "category": "Utility"
   },
   "win": {
-    "target": ["portable", "msi"]
+    "target": [
+      "portable",
+      "nsis"
+    ],
+    "icon": "build/icon.png"
+  },
+  "icon": "build/icon.png",
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": "always"
+  },
+  "portable": {
+    "artifactName": "${productName}-portable.exe"
   }
 }
