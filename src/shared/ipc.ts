@@ -13,7 +13,7 @@ import type {
   RagProgressEvent,
   RetrievalSettings,
   SystemStats,
-} from './types';
+} from './types.js';
 
 /** Unsubscribe handle returned by every `on*` registration. */
 export type Unsubscribe = () => void;

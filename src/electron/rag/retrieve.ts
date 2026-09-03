@@ -1,5 +1,5 @@
-import { passesFloor, selectTopK, similarityFromDistance } from '../../shared/budget';
-import type { StoreHit } from './storeTypes';
+import { passesFloor, selectTopK, similarityFromDistance } from '../../shared/budget.js';
+import type { StoreHit } from './storeTypes.js';
 
 /**
  * Reading the index: turning raw neighbours into passages that may be cited.

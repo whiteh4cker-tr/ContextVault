@@ -12,8 +12,11 @@ export interface LlamaServiceDeps {
    * the packaged build passes the unpacked directory explicitly.
    */
   llamaDirectory?: string;
-  /** Offload to GPU; 'auto' picks CUDA / Metal / Vulkan, 'false' forces CPU. */
-  gpu?: 'auto' | 'force' | false;
+  /**
+   * GPU selection, passed straight to the engine: 'auto' tries CUDA / Metal /
+   * Vulkan in turn, `false` keeps everything on the CPU.
+   */
+  gpu?: 'auto' | 'metal' | 'cuda' | 'vulkan' | false;
   modelsDir: string;
 }
 
@@ -75,7 +78,12 @@ export class LlamaService {
 
   /** The GPU backend actually chosen, for the memory gauge's tooltip. */
   get gpuBackend(): string {
-    return this.llama?.gpu ?? 'cpu';
+    const gpu = this.llama?.gpu;
+    if (typeof gpu === 'string' && gpu.length > 0) return gpu;
+    // `false` means the engine ran the CPU build; before load there is nothing
+    // to report, and "unknown" is truer than a confident "cpu".
+    if (gpu === false) return 'cpu';
+    return 'unknown';
   }
 
   // ── Chat model ────────────────────────────────────────────────────────────
@@ -141,6 +149,7 @@ export class LlamaService {
     const handle = await this.ensureChat();
     const startedAt = Date.now();
     let text = '';
+    let tokenCount = 0;
 
     try {
       const response = await handle.session.prompt(prompt, {
@@ -149,14 +158,18 @@ export class LlamaService {
           text += chunk;
           options.onTextChunk?.(chunk);
         },
+        // Tokens are counted as they stream: the returned string is the answer,
+        // but tokens per second is a property of the generation, not of the text.
+        onResponseChunk: (chunk) => {
+          if (chunk.type === undefined) tokenCount += chunk.tokens.length;
+        },
       });
 
       const elapsedSeconds = Math.max(0.001, (Date.now() - startedAt) / 1000);
-      const tokenCount = response.responseTokens.length;
       return {
-        // The response text is authoritative; the accumulated chunks can differ
-        // when the model emits a segment the wrapper strips.
-        text: response.text || text,
+        // The returned text is authoritative; accumulated chunks can differ when
+        // the wrapper strips or re-spacing something.
+        text: response || text,
         tokenCount,
         tokensPerSecond: tokenCount / elapsedSeconds,
         aborted: false,
@@ -174,16 +187,6 @@ export class LlamaService {
   async resetChatHistory(): Promise<void> {
     if (!this.chat) return;
     this.chat.session.resetChatHistory();
-  }
-
-  /** Tokens currently occupied in the context, when the engine reports it. */
-  get usedContextTokens(): number | undefined {
-    if (!this.chat) return undefined;
-    try {
-      return this.chat.context.tokensUsed;
-    } catch {
-      return undefined;
-    }
   }
 
   async releaseChat(): Promise<void> {

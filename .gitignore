@@ -12,6 +12,10 @@ dist
 dist-react
 dist-electron
 /models
+
+# Application data in a development run: models, vector index, registry,
+# transcript. Nothing here belongs in the repository.
+/.contextvault
 /docs
 *.local
 

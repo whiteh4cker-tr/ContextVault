@@ -1,5 +1,5 @@
 import { fork } from 'node:child_process';
-import type { StoreHit, StoreRecord } from './storeTypes';
+import type { IIndex, StoreHit, StoreRecord } from './storeTypes.js';
 
 /** The minimal child-process shape this client needs, so Electron and Node both fit. */
 export interface SpawnedWorker {
@@ -15,7 +15,7 @@ export type WorkerLauncher = (workerPath: string) => SpawnedWorker;
 export const forkLauncher: WorkerLauncher = (workerPath) => {
   const child = fork(workerPath, [], { stdio: ['ignore', 'inherit', 'inherit', 'ipc'] });
   return {
-    post: (message) => child.send?.(message),
+    post: (message) => child.send?.(message as never),
     onMessage: (cb) => child.on('message', cb),
     onExit: (cb) => child.on('exit', (code) => cb(code)),
     kill: () => child.kill(),
@@ -60,7 +60,7 @@ interface Pending {
  *   reopens the same file. The index survives because it is on disk, so a crash
  *   costs one failed call rather than the corpus.
  */
-export class VectorStore {
+export class VectorStore implements IIndex {
   private readonly options: VectorStoreOptions;
   private readonly launcher: WorkerLauncher;
   private child: SpawnedWorker | null = null;
@@ -112,7 +112,7 @@ export class VectorStore {
     const id = this.nextId++;
     return new Promise<T>((resolve, reject) => {
       this.pending.set(id, { resolve: resolve as (value: unknown) => void, reject });
-      child.post({ id, type, payload });
+      child.post({ id, type, payload } as never);
     });
   }
 

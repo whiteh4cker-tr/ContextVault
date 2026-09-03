@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { CONTEXT_MIN, formatGrouped, largestSafeContext } from '../shared/budget';
+import { CONTEXT_MIN, formatGrouped, largestSafeContext } from '../shared/budget.js';
 import type {
   ContextBounds,
   ModelCatalogEntry,
@@ -10,7 +10,7 @@ import type {
   ModelRole,
   ModelState,
   ModelStatusSnapshot,
-} from '../shared/types';
+} from '../shared/types.js';
 import { CATALOG, UNKNOWN_TRAINED_CONTEXT, entryForFile, recommendedFor } from './catalog.js';
 import type { AppPaths } from './paths.js';
 
@@ -172,7 +172,7 @@ export class ModelManager {
     return files.find((f) => f.role === role)?.fileName ?? null;
   }
 
-  private slotState(role: ModelRole, fileName: string | null): ModelState {
+  private slotState(role: ModelRole, fileName: string | null | undefined): ModelState {
     if (this.downloads.has(role)) return 'downloading';
     if (!fileName) return 'missing';
     switch (this.runtime[role].loadState) {

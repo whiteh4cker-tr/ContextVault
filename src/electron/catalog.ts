@@ -1,4 +1,4 @@
-import type { ModelCatalogEntry, ModelRole } from '../shared/types';
+import type { ModelCatalogEntry, ModelRole } from '../shared/types.js';
 
 /**
  * The two models ContextVault is designed around.

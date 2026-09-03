@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { DocumentRecord } from '../../shared/types';
+import type { DocumentRecord } from '../../shared/types.js';
 
 /**
  * The list of documents the user has added, and what happened to each one.
@@ -18,7 +18,11 @@ export class DocumentRegistry {
   private records: DocumentRecord[] = [];
   private loaded = false;
 
-  constructor(private readonly file: string) {}
+  private readonly file: string;
+
+  constructor(file: string) {
+    this.file = file;
+  }
 
   async load(): Promise<void> {
     if (this.loaded) return;

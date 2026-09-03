@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import type { DocumentKind } from '../shared/types';
+import type { DocumentKind } from '../../shared/types.js';
 
 /**
  * Turning a file on disk into text with its page boundaries intact.

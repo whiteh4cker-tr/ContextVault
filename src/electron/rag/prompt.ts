@@ -1,5 +1,5 @@
-import type { Citation, Provenance } from '../../shared/types';
-import type { Passage } from './retrieve';
+import type { Citation, Provenance } from '../../shared/types.js';
+import type { Passage } from './retrieve.js';
 
 /**
  * Turning retrieved passages into the one prompt the model receives.
