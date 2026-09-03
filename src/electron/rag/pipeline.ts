@@ -10,6 +10,12 @@ import type { IIndex, StoreRecord } from './storeTypes.js';
 /** What the pipeline needs from the embedding engine, kept narrow for testing. */
 export interface Embedder {
   embed(texts: string[], onEach?: (done: number) => void): Promise<number[][]>;
+  /**
+   * Embed a question. Separate from `embed` because some embedders expect a task
+   * sentence on the query side only, and applying it to stored passages would
+   * move the whole corpus.
+   */
+  embedQuery(question: string): Promise<number[]>;
   getEmbeddingDimensions(): Promise<number>;
 }
 

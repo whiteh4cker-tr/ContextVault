@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { CATALOG as REAL_CATALOG } from '../../electron/catalog';
 import { CATALOG, DEFAULT_CONTEXT_SIZE, createFakeBackend } from './fakeBackend';
 
 /** Stage names in the order they first appear, ignoring progress repeats. */
@@ -18,9 +19,19 @@ async function withIndexedDocument(stageDelayMs = 1) {
 describe('fakeBackend models', () => {
   it('offers the two default GGUF files, one per role', async () => {
     const catalog = await createFakeBackend().modelCatalog();
-    expect(catalog.map((c) => c.role).sort()).toEqual(['chat', 'embedding']);
-    expect(catalog.find((c) => c.role === 'chat')?.url).toContain('unsloth/gemma-4-12B-it-qat-GGUF');
-    expect(catalog.find((c) => c.role === 'embedding')?.url).toContain('cstr/bge-m3-GGUF');
+    const roles = catalog.filter((entry) => entry.recommended).map((entry) => entry.role).sort();
+    expect(roles).toEqual(['chat', 'embedding']);
+  });
+
+  it('shows exactly the catalogue the main process would download', async () => {
+    // The fake exists so the interface can be developed and demonstrated without
+    // gigabytes of weights. That only helps while it says the same thing the real
+    // engine does — same files, same addresses, same sizes, same vector width.
+    for (const entry of CATALOG) {
+      const real = REAL_CATALOG.find((candidate) => candidate.fileName === entry.fileName);
+      expect(real, `${entry.fileName} is not in the real catalogue`).toBeTruthy();
+      expect({ ...entry }).toEqual(real);
+    }
   });
 
   it('starts ready when the defaults are installed', async () => {

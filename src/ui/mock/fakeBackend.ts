@@ -24,17 +24,20 @@ export const CATALOG: readonly ModelCatalogEntry[] = [
     fileName: 'gemma-4-12B-it-qat-UD-Q4_K_XL.gguf',
     role: 'chat',
     url: 'https://huggingface.co/unsloth/gemma-4-12B-it-qat-GGUF/resolve/main/gemma-4-12B-it-qat-UD-Q4_K_XL.gguf',
-    sizeBytes: 6_719_400_000,
+    sizeBytes: 6_716_356_800,
     label: 'Gemma 4 12B Instruct — QAT Q4_K_XL',
     recommended: true,
+    trainedContext: 262_144,
   },
   {
-    fileName: 'bge-m3-q8_0.gguf',
+    fileName: 'qwen3-embedding-4b-q4_k_m.gguf',
     role: 'embedding',
-    url: 'https://huggingface.co/cstr/bge-m3-GGUF/resolve/main/bge-m3-q8_0.gguf',
-    sizeBytes: 609_700_000,
-    label: 'BGE-M3 embeddings — q8_0, 1024-d',
+    url: 'https://huggingface.co/enacimie/Qwen3-Embedding-4B-Q4_K_M-GGUF/resolve/main/qwen3-embedding-4b-q4_k_m.gguf',
+    sizeBytes: 2_496_703_776,
+    label: 'Qwen3 Embedding 4B — Q4_K_M, 2560-d',
     recommended: true,
+    dimensions: 2560,
+    trainedContext: 40_960,
   },
 ];
 
@@ -44,7 +47,7 @@ export const DEFAULT_CONTEXT_SIZE = 16_384;
 /** Trained context lengths the fake knows, mirroring the GGUF metadata. */
 const TRAINED_CONTEXT: Record<string, number> = {
   'gemma-4-12B-it-qat-UD-Q4_K_XL.gguf': 262_144,
-  'bge-m3-q8_0.gguf': 8_192,
+  'qwen3-embedding-4b-q4_k_m.gguf': 40_960,
 };
 
 /** KV cache + graph overhead per token of context, as GgufInsights would report. */
@@ -197,7 +200,7 @@ export function createFakeBackend(options: FakeBackendOptions = {}): IpcApi {
         state: modelState.embedding,
         fileName: installed.get('embedding'),
         sizeBytes: sizeFor('embedding'),
-        dimensions: installed.get('embedding') ? 1024 : undefined,
+        dimensions: installed.get('embedding') ? 2560 : undefined,
       },
     };
   }

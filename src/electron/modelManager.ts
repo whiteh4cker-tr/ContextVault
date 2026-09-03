@@ -32,6 +32,12 @@ export interface DownloaderFactory {
 /** The GGUF facts the manager needs, read without loading the model. */
 export interface GgufFacts {
   architecture?: string;
+  /**
+   * `pooling_type` from the file itself. Architecture names are not enough on
+   * their own: Qwen3 Embedding reports the same architecture string as the Qwen3
+   * chat models, and only this field separates them.
+   */
+  poolingType?: number;
   trainedContext?: number;
   /** Estimated bytes the engine will hold per token of context. */
   bytesPerToken?: number;
@@ -405,7 +411,7 @@ export class ModelManager {
     if (known) return [known.role];
     const facts = await this.factsFor(path.join(this.paths.modelsDir, fileName));
     const { rolesForArchitecture } = await import('./catalog.js');
-    return rolesForArchitecture(facts.architecture);
+    return rolesForArchitecture(facts.architecture, facts.poolingType);
   }
 }
 
@@ -445,8 +451,13 @@ async function readGgufFactsFromDisk(filePath: string): Promise<GgufFacts> {
   const delta = large.cpuRam - small.cpuRam;
   const trained = insights.trainContextSize;
 
+  const section = (info.metadata as Record<string, { pooling_type?: number }> | undefined)?.[
+    architecture ?? ''
+  ];
+
   return {
     ...(architecture ? { architecture } : {}),
+    ...(typeof section?.pooling_type === 'number' ? { poolingType: section.pooling_type } : {}),
     ...(typeof trained === 'number' && trained > 0 ? { trainedContext: trained } : {}),
     bytesPerToken: delta > 0 ? Math.round(delta / (8192 - 1024)) : 0,
   };

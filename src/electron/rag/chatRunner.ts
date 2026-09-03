@@ -72,7 +72,7 @@ export async function runTurn(deps: RunnerDeps, input: TurnInput): Promise<TurnO
 
   let passages: Passage[] = [];
   try {
-    const [questionVector] = await deps.embeddings.embed([input.question]);
+    const questionVector = await deps.embeddings.embedQuery(input.question);
     if (!questionVector) return empty;
 
     const hits = await deps.store.search(questionVector, overFetchDepth(settings.topK));
