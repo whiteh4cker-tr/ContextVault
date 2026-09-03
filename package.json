@@ -1,25 +1,26 @@
 {
+  "scripts": {
+    "dev:react": "vite",
+    "dev:electron": "npm run build && electron .",
+    "build": "tsc -b && vite build && npm run build:electron",
+    "build:electron": "tsc -p src/electron/tsconfig.json && node -e \"require('fs').copyFileSync('src/electron/preload.cjs','dist-electron/electron/preload.cjs')\"",
+    "typecheck": "tsc -b && tsc -p src/electron/tsconfig.json --noEmit",
+    "lint": "oxlint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preview": "vite preview",
+    "smoke:engine": "npm run build && electron scripts/engine-smoke.mjs",
+    "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
+    "dist:win": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
+    "dist:mac": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64",
+    "dist:linux": "npm run build && electron-builder --linux --x64"
+  },
   "name": "contextvault-electron",
   "productName": "ContextVault",
   "private": true,
   "version": "0.1.0",
   "type": "module",
   "main": "dist-electron/electron/main.js",
-  "scripts": {
-    "dev:react": "vite",
-    "dev:electron": "npm run build && electron .",
-    "build": "tsc -b && vite build && npm run build:electron",
-    "build:electron": "tsc -p src/electron/tsconfig.json && node -e \"require('fs').copyFileSync('src/electron/preload.cjs','dist-electron/electron/preload.cjs')\"",
-    "lint": "oxlint",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "preview": "vite preview",
-    "dist": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder",
-    "dist:mac": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --mac --arm64",
-    "dist:win": "npm run build && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
-    "dist:linux": "npm run build && electron-builder --linux --x64",
-    "smoke:engine": "npm run build && electron scripts/engine-smoke.mjs"
-  },
   "dependencies": {
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
@@ -60,5 +61,8 @@
     "@napi-rs/canvas@0.1.80": true,
     "core-js": false,
     "electron-winstaller@5.4.0": true
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

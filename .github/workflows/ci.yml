@@ -1,0 +1,82 @@
+name: CI
+
+# What this proves, and what it deliberately does not.
+#
+# Every test in the repository runs here: unit tests for the retrieval maths, the
+# prompt builder's injection fencing, the splitter's invariants, the index protocol
+# against the real vector library, the contrast ratios, and the axe-core scan of the
+# rendered interface. That is the whole automated suite, and it needs no model files
+# and no GPU.
+#
+# Model inference is not part of this workflow. A 6.7 GB chat model and a 2.5 GB
+# embedder are not in the repository — the person using the application chooses them
+# and downloads them once — and hosted runners have neither the disk nor the graphics
+# memory to load them. Those measurements are taken on real hardware instead, with
+# `npm run smoke:engine`, and reported in the README with the machine named.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck both sides of the bridge
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build the renderer and the main process
+        run: npm run build
+
+      - name: Check that the renderer cannot reach the network
+        # Two checks, because the claim has two parts.
+        #
+        # The first is the policy the browser enforces: the built page must still
+        # carry `connect-src 'none'`, which is what makes "offline" a property of the
+        # running application rather than a promise in a document.
+        #
+        # The second is the source the application owns. Grepping the bundle would be
+        # theater — Vite's module-preload polyfill and React's preload helpers both
+        # contain the word `fetch`, and neither is a call this program makes. So the
+        # check runs over src/ui and src/shared, where a stray `fetch` would be a
+        # design error worth failing the build over.
+        run: |
+          grep -q "connect-src 'none'" dist-react/index.html \
+            || { echo "The built page lost connect-src 'none'."; exit 1; }
+          if grep -REn "fetch\(|XMLHttpRequest|new WebSocket|EventSource|navigator\.sendBeacon" src/ui src/shared; then
+            echo "The renderer must reach the network only through the main process."
+            exit 1
+          fi
+          echo "CSP intact and no network calls in the renderer's own source."
+
+      - name: Verify the packaged files exist
+        run: |
+          test -f dist-react/index.html
+          test -f dist-electron/electron/main.js
+          test -f dist-electron/electron/preload.cjs
+          ls -la dist-react/assets
