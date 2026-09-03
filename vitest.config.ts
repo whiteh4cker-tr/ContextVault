@@ -5,6 +5,10 @@ export default defineConfig({
     // Node is the default because most of the suite is pure logic; component
     // tests opt into the DOM with a `// @vitest-environment jsdom` docblock.
     environment: 'node',
+    // Testing Library registers its automatic unmount in `afterEach` only when
+    // globals are present; without it, every render in a file piles up in the
+    // same document and queries match the previous test's DOM as well.
+    globals: true,
     include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
     coverage: {
       provider: 'v8',
