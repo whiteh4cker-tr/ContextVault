@@ -53,24 +53,26 @@ export interface ModelCatalogEntry {
 }
 
 /**
- * Bounds for the context slider, computed from the model file and the memory
- * measured at request time — deliberately not a hardcoded range.
+ * Limits for the context-size field, measured against the model file and the
+ * memory available when the request was made.
+ *
+ * `maxSafe` is advisory and `maxModel` is not: the first is what fits right now,
+ * the second is what the model can represent at all.
  */
 export interface ContextBounds {
   fileName: string;
-  /** The only values the slider may take. */
-  steps: number[];
+  /** Smallest context the engine will accept. */
   min: number;
-  /** Largest step that fits the memory measured when this was computed. */
+  /** The model's trained context length — the hard upper limit. */
+  maxModel: number;
+  /** Largest size that fits the memory measured when this was computed. */
   maxSafe: number;
   default: number;
   weightsBytes: number;
   /** KV-cache + graph overhead estimate for one token of context. */
   bytesPerToken: number;
   freeBytes: number;
-  /** `tokens -> estimated footprint in bytes`, for the label beside the thumb. */
-  estimate: Record<string, number>;
-  /** Why steps above `maxSafe` are disabled, phrased for a person. */
+  /** Why a size above `maxSafe` may not load, phrased for a person. */
   reason?: string;
 }
 

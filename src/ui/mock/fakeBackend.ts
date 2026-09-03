@@ -1,4 +1,4 @@
-import { CONTEXT_STEPS, formatGrouped, largestSafeContext } from '../../shared/budget';
+import { CONTEXT_MIN, formatGrouped, largestSafeContext } from '../../shared/budget';
 import type { IpcApi, Unsubscribe } from '../../shared/ipc';
 import type {
   ChatChunkEvent,
@@ -40,6 +40,15 @@ export const CATALOG: readonly ModelCatalogEntry[] = [
 
 /** Default context window, as specified for the chat model. */
 export const DEFAULT_CONTEXT_SIZE = 16_384;
+
+/** Trained context lengths the fake knows, mirroring the GGUF metadata. */
+const TRAINED_CONTEXT: Record<string, number> = {
+  'gemma-4-12B-it-qat-UD-Q4_K_XL.gguf': 262_144,
+  'bge-m3-q8_0.gguf': 8_192,
+};
+
+/** KV cache + graph overhead per token of context, as GgufInsights would report. */
+const BYTES_PER_TOKEN = 196_608;
 
 /** Stand-in text the fake "extracts" from a dropped file, so citations look real. */
 const SNIPPETS = [
@@ -366,24 +375,20 @@ export function createFakeBackend(options: FakeBackendOptions = {}): IpcApi {
     async contextBounds({ fileName }): Promise<ContextBounds> {
       const active = fileName ?? installed.get('chat') ?? CATALOG[0].fileName;
       const weightsBytes = CATALOG.find((c) => c.fileName === active)?.sizeBytes ?? 6_719_400_000;
-      const bytesPerToken = 196_608;
+      const maxModel = TRAINED_CONTEXT[active] ?? 131_072;
       const freeBytes = readStats().freeBytes;
-      const maxSafe = largestSafeContext({ freeBytes, weightsBytes, bytesPerToken });
-      const estimate = Object.fromEntries(
-        CONTEXT_STEPS.map((size) => [String(size), weightsBytes + size * bytesPerToken]),
-      );
+      const maxSafe = largestSafeContext({ freeBytes, weightsBytes, bytesPerToken: BYTES_PER_TOKEN, maxContext: maxModel });
       return {
         fileName: active,
-        steps: [...CONTEXT_STEPS],
-        min: CONTEXT_STEPS[0],
+        min: CONTEXT_MIN,
+        maxModel,
         maxSafe,
         default: DEFAULT_CONTEXT_SIZE,
         weightsBytes,
-        bytesPerToken,
+        bytesPerToken: BYTES_PER_TOKEN,
         freeBytes,
-        estimate,
         reason:
-          maxSafe < CONTEXT_STEPS[CONTEXT_STEPS.length - 1]
+          maxSafe < maxModel
             ? `Above ${formatGrouped(maxSafe)} tokens the KV cache no longer fits in the ${formatGrouped(Math.round(freeBytes / 1e9))} GB free right now.`
             : undefined,
       };

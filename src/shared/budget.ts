@@ -86,6 +86,54 @@ export function largestSafeContext({
   return fit ?? CONTEXT_MIN;
 }
 
+/** The limits a typed context size is judged against. */
+export interface ContextLimits {
+  min: number;
+  /** The model's trained context length. */
+  maxModel: number;
+  /** What fits in the memory measured right now; advisory, not a hard limit. */
+  maxSafe: number;
+}
+
+export type ContextSizeVerdict =
+  | { ok: true; value: number; level: 'fits' | 'over-committed' }
+  | { ok: false; value: number | null; error: string };
+
+/**
+ * Judge a context size typed into the field.
+ *
+ * Two kinds of refusal, deliberately kept apart. A size that is not a whole
+ * number, or outside 256..trained-length, is a mistake — the engine cannot honour
+ * it, so the field says so and does not offer Apply. A size that would fit the
+ * model but not the memory free right now is a *decision*: the estimate and the
+ * shortfall are shown, and applying it stays possible, because the measurement is
+ * a snapshot and the user may know something it does not.
+ */
+export function validateContextSize(raw: string, limits: ContextLimits): ContextSizeVerdict {
+  // Spaces and underscores are stripped so "16 384" — how this UI writes the
+  // number everywhere — can be typed or pasted back in.
+  const text = raw.trim().replace(/[\s_]/g, '');
+  if (text.length === 0) return { ok: false, value: null, error: 'Enter a context size in tokens.' };
+
+  const value = Number(text);
+  // `Number` accepts "1e5", "0x1000" and "Infinity", none of which a person
+  // should be able to enter as a token count.
+  if (!/^-?\d+$/.test(text) || !Number.isFinite(value) || !Number.isInteger(value)) {
+    return { ok: false, value: Number.isFinite(value) ? value : null, error: 'Context size must be a whole number of tokens.' };
+  }
+  if (value < limits.min) {
+    return { ok: false, value, error: `Context size must be at least ${formatGrouped(limits.min)} tokens.` };
+  }
+  if (value > limits.maxModel) {
+    return {
+      ok: false,
+      value,
+      error: `This model supports at most ${formatGrouped(limits.maxModel)} tokens.`,
+    };
+  }
+  return { ok: true, value, level: value > limits.maxSafe ? 'over-committed' : 'fits' };
+}
+
 /** Estimated resident bytes for a given context size. */
 export function estimateContextBytes(weightsBytes: number, bytesPerToken: number, contextSize: number): number {
   return weightsBytes + contextSize * bytesPerToken;

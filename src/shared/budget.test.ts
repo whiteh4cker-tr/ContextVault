@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   confidenceLabel,
   estimateContextBytes,
+  validateContextSize,
   formatBytes,
   formatGrouped,
   formatTokens,
@@ -103,6 +104,50 @@ describe('largestSafeContext', () => {
 describe('estimateContextBytes', () => {
   it('adds weights and KV cache', () => {
     expect(estimateContextBytes(1000, 10, 256)).toBe(3560);
+  });
+});
+
+describe('validateContextSize', () => {
+  const limits = { min: 256, maxModel: 262_144, maxSafe: 4096 };
+
+  it('refuses blank, fractional and non-numeric input', () => {
+    expect(validateContextSize('   ', limits).ok).toBe(false);
+    expect(validateContextSize('', limits).ok).toBe(false);
+    expect(validateContextSize('16k', limits)).toMatchObject({
+      ok: false,
+      error: 'Context size must be a whole number of tokens.',
+    });
+    expect(validateContextSize('1024.5', limits).ok).toBe(false);
+    expect(validateContextSize('0', limits).ok).toBe(false);
+  });
+
+  it('refuses a size below the engine minimum and names it', () => {
+    const verdict = validateContextSize('128', limits);
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.error).toContain('256');
+  });
+
+  it('refuses a size the model was never trained to represent', () => {
+    const verdict = validateContextSize('300000', limits);
+    expect(verdict.ok).toBe(false);
+    if (!verdict.ok) expect(verdict.error).toContain('262 144');
+  });
+
+  it('accepts a size that fits and labels one the model can only just do', () => {
+    expect(validateContextSize('2048', limits)).toEqual({ ok: true, value: 2048, level: 'fits' });
+    expect(validateContextSize('4096', limits)).toMatchObject({ ok: true, level: 'fits' });
+    expect(validateContextSize('16384', limits)).toMatchObject({ ok: true, level: 'over-committed' });
+  });
+
+  it('tolerates padding and digit groups around a typed number', () => {
+    expect(validateContextSize('  4096  ', limits)).toMatchObject({ ok: true, value: 4096 });
+    expect(validateContextSize('16 384', limits)).toMatchObject({ ok: true, value: 16_384 });
+  });
+
+  it('does not accept exponent, hexadecimal or infinity notation as a token count', () => {
+    expect(validateContextSize('0x1000', limits).ok).toBe(false);
+    expect(validateContextSize('1e5', limits).ok).toBe(false);
+    expect(validateContextSize('Infinity', limits).ok).toBe(false);
   });
 });
 

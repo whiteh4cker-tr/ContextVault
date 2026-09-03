@@ -28,7 +28,8 @@ export interface ModelsController {
   refresh(): Promise<void>;
   select(role: ModelRole, fileName: string): Promise<void>;
   remove(role: ModelRole, fileName: string): Promise<void>;
-  downloadEntry(role: ModelRole, entry: ModelCatalogEntry): Promise<void>;
+  /** `sizeBytes` is unknown for a pasted URL, so progress starts indeterminate. */
+  downloadEntry(role: ModelRole, entry: Pick<ModelCatalogEntry, 'fileName' | 'url'>): Promise<void>;
   cancel(role: ModelRole): Promise<void>;
   importFile(role: ModelRole, path: string): Promise<void>;
   applyContextSize(contextSize: number): Promise<void>;
@@ -64,7 +65,12 @@ export function useModels(api: IpcApi = defaultApi): ModelsController {
     }
   }, [api]);
 
+  // The bridge is an external system, so the first measurement is read in an
+  // effect rather than during render; the value arrives asynchronously and every
+  // later change comes from an event or a status push. The lint rule suppressed
+  // below cannot see that every setState in `refresh` happens after an await.
   useEffect(() => {
+    // oxlint-disable-next-line react/set-state-in-effect
     void refresh();
   }, [refresh]);
 
@@ -109,7 +115,7 @@ export function useModels(api: IpcApi = defaultApi): ModelsController {
     select: (role, fileName) => run(() => api.selectModel({ role, fileName })),
     remove: (role, fileName) => run(() => api.deleteModel({ role, fileName })),
     downloadEntry: async (role, entry) => {
-      setDownload({ role, fileName: entry.fileName, percent: 0, transferred: 0, total: entry.sizeBytes });
+      setDownload({ role, fileName: entry.fileName, percent: 0, transferred: 0, total: 0 });
       try {
         await api.downloadModel({ role, url: entry.url, fileName: entry.fileName });
         await refresh();

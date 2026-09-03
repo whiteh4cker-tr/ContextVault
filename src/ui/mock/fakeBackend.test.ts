@@ -47,14 +47,22 @@ describe('fakeBackend models', () => {
     expect((await backend.modelStatus()).embedding.state).toBe('ready');
   });
 
-  it('bounds the context slider by measured memory rather than by the model’s trained length', async () => {
+  it('bounds the context field by measured memory rather than by the model’s trained length', async () => {
     const bounds = await createFakeBackend({ freeBytes: 8_000_000_000 }).contextBounds({});
-    expect(bounds.steps).toContain(16384);
+    expect(bounds.maxModel).toBe(262_144);
     // 8 GB free minus 6.72 GB of weights leaves room for ~6 500 tokens at
-    // 196 608 B/token, so the largest offerable step is 4096.
+    // 196 608 B/token, so the largest size that fits is 4096.
     expect(bounds.maxSafe).toBe(4096);
+    expect(bounds.min).toBe(256);
     expect(bounds.reason).toContain('4 096');
-    expect(bounds.estimate['16384']).toBeGreaterThan(bounds.freeBytes);
+  });
+
+  it('applies a context size and reports it back', async () => {
+    const backend = createFakeBackend({ stageDelayMs: 1 });
+    expect((await backend.modelStatus()).contextSize).toBe(DEFAULT_CONTEXT_SIZE);
+    const updated = await backend.setContextSize({ contextSize: 8192 });
+    expect(updated.contextSize).toBe(8192);
+    expect((await backend.modelStatus()).contextSize).toBe(8192);
   });
 });
 
