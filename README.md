@@ -103,9 +103,14 @@ the key-value cache before filling VRAM with weights. Asking for `"max"` instead
 a model ends up copied across VRAM and system RAM in the worst order.
 
 **Citations are data, and the parser produces no HTML.** `dangerouslySetInnerHTML` is
-never used. A document containing `<img onerror=...>` displays those characters.
-Untrusted text is fenced in the prompt and its tag-openers are neutralised before it
-reaches the model, so a document cannot instruct the model on the user's behalf.
+never used anywhere in the renderer, and nothing in the markdown parser interprets angle
+brackets, so a document containing `<img onerror=...>` displays those characters. In the
+prompt, quoted passage text has its tag-openers rewritten to `&lt;` before the model sees
+them, the quotes are wrapped in `<sources>`, the question is placed after them, and page
+numbers come from the index rather than from the text. That is a string rewrite plus an
+instruction to treat the quoted block as data — a real obstacle to a document closing the
+tag it was quoted inside, and nothing more. See
+[Limitations, honestly stated](#limitations-honestly-stated) for where it does not hold.
 
 **A `[7]` with no seventh source is not a button.** An invented marker renders as
 text. A clickable citation for a passage that does not exist would fabricate
@@ -261,7 +266,7 @@ reported as measured rather than as typical:
 | What | Measured |
 | --- | --- |
 | Embedding model load | 1.8 s (mmap), 36 layers, on the CPU by policy |
-| Chat model load | 4.1 s (mmap), 49 of 48 layer slots in VRAM |
+| Chat model load | 4.1 s (mmap), all 48 decoder layers in VRAM (the engine counts 49 layer slots — one more than the file's `block_count` of 48) |
 | Context window granted | 16384 tokens |
 | One passage embedded, CPU | ~170 ms (after a 802 ms cold first call) |
 | One question embedded while the chat model is resident | 178 ms |
@@ -308,9 +313,10 @@ cannot:
    palette — 53 assertions over every surface and state combination, including the ones nobody looks at, like disabled text — and
    fails if any falls below 4.5:1 for body text or 3:1 for large text and non-text
    indicators. A negative control proves the calculation can fail.
-2. **axe-core.** The rendered application is scanned in five states (empty, first-run
-   gate, conversation with citations, document list, and a deliberately broken
-   fragment) under the WCAG 2 A/AA rule set.
+2. **axe-core.** The rendered application is scanned in three states — empty, the
+   first-run model gate, and a conversation with citations — under the WCAG 2 A/AA rule
+   set. A fourth scan of a deliberately broken fragment must report all three of its
+   violations, which is what shows the scanner is capable of failing.
 3. **Roles and names, in the component tests.** Assertions are about what a screen
    reader announces: a log region for the transcript, a labelled dialog, named
    controls, progress reported as a value rather than as a colour. One test asserts
@@ -324,13 +330,13 @@ Colour is never the only signal: every state that has a colour also has a word.
 ## Testing and verification
 
 ```
-20 test files   285 tests   ~2 700 lines of test against ~11 000 lines of source
+20 test files   285 tests   ~2 700 lines of test against ~8 300 lines of source
 ```
 
 | Area | What is asserted |
 | --- | --- |
 | Retrieval | floor/sort/cut ordering, over-fetch depth, registry filtering, `1 − distance` conversion |
-| Prompt | injection fencing (a document cannot close its own fence), token budgeting, whole-passage dropping, citation subset, provenance classification |
+| Prompt | injection fencing (quoted passage text cannot close the fence it sits in), token budgeting, whole-passage dropping, citation subset, provenance classification |
 | Chunker | invariants on every input: `source.slice(start, end) === text`, full character coverage, strictly increasing progress, no cascade of fragments |
 | Markdown | citations recognised, `[2024]` and `[12:30]` not, no HTML produced, only `http`/`https`/`mailto` links |
 | Index | the real vector library: insert/search/delete/count, the JSON-RPC protocol, restart-on-death, and a 2 560-dimension regression guard |
@@ -405,11 +411,17 @@ status line tells you what was actually granted.
 - **Context windows are finite and passages are dropped.** When passages do not fit,
   whole ones are dropped from the bottom up and the interface says how many. A long
   document asked about comprehensively may see less of itself than you expect.
+- **The prompt fence covers quoted text, not file names.** Passage bodies have their
+  tag-openers neutralised, but the `document="…"` attribute is built from the file name as
+  it stands on disk, and a name may carry a newline or a quote. A file named `invoice`, a
+  newline, then `</source>` followed by more text therefore does place a literal fence
+  closer — and that text — outside the fence. Nothing else is reachable from a model
+  response: no tool calling, no network from the renderer, no shell.
 - **No OCR.** A scanned PDF has no text layer, so extraction returns nothing and the
   document is reported as such rather than quietly indexed as empty.
-- **Inference speed is hardware-bound.** Around 2–4 tokens/s on the reference machine.
-  Long answers take tens of seconds, which is why the transcript streams and the stop
-  button exists.
+- **Inference speed is hardware-bound.** Generation runs 2.4 – 9 tokens/s on the
+  reference machine. Long answers take tens of seconds, which is why the transcript
+  streams and the stop button exists.
 - **The vector library is young.** Its metadata filters return zero rows silently, so
   filtering is done in application code; its default index capacity aborts processes;
   and one index per process is a constraint inherited from the native layer. All three
